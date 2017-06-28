@@ -34,7 +34,7 @@ non_smtpd_milters = unix:/milterfrom/milterfrom, unix:/opendkim/opendkim.sock
 
 ## Run
 ```bash
-./milterfrom -u milterfrom -g milterfrom -m 022 -d -p /var/run/milterfrom.pid -s /var/spool/postfix/milterfrom/milterfrom
+./milterfrom -u milterfrom -g milterfrom -m 002 -d -p /var/run/milterfrom.pid -s /var/spool/postfix/milterfrom/milterfrom
 ```
 
 ## License

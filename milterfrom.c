@@ -198,7 +198,6 @@ gid_t get_gid(const char *name)
     return grp == NULL ? -1 : grp->gr_gid;
 }
 
-
 int main(int argc, char **argv)
 {
 	int c, daemonize = 0;
@@ -225,7 +224,7 @@ int main(int argc, char **argv)
 			gid = get_gid(optarg);
 			break;
 		case 'm':
-			um = atoi(optarg);
+			um = strtol(optarg, 0, 8);
 			break;
 		}
 	}
@@ -246,9 +245,9 @@ int main(int argc, char **argv)
 		free(pidfilename);
 	}
 
-	if (uid != (uid_t)-1) setuid(uid);
-	if (gid != (gid_t)-1) setgid(gid);
 	if (um != (mode_t)-1) umask(um);
+	if (gid != (gid_t)-1) setgid(gid);
+	if (uid != (uid_t)-1) setuid(uid);
 
 	if (daemonize) {
 		if (daemon(0, 0) == -1) {
