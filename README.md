@@ -17,9 +17,24 @@ cmake ..
 make
 ```
 
+## Postfix (on Debian)
+```bash
+groupadd milterfrom
+useradd -g milterfrom -s /bin/false -d /var/spool/postfix/milterfrom milterfrom
+adduser postfix milterfrom
+mkdir /var/spool/postfix/milterfrom
+chown milterfrom:milterfrom /var/spool/postfix/milterfrom
+```
+
+main.cf (If you don't use OpenDKIM, remove it):
+```
+smtpd_milters = unix:/milterfrom/milterfrom, unix:/opendkim/opendkim.sock
+non_smtpd_milters = unix:/milterfrom/milterfrom, unix:/opendkim/opendkim.sock
+```
+
 ## Run
 ```bash
-./milterfrom -d -p pidfile.pid -s /var/spool/postfix/themilter
+./milterfrom -u milterfrom -g milterfrom -m 022 -d -p /var/run/milterfrom.pid -s /var/spool/postfix/milterfrom/milterfrom
 ```
 
 ## License

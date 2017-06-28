@@ -203,10 +203,11 @@ int main(int argc, char **argv)
 {
 	int c, daemonize = 0;
 	uid_t uid = -1; gid_t gid = -1;
+	mode_t um = -1;
 	char *pidfilename = NULL, *sockname = NULL;
 	FILE *pidfile = NULL;
 
-	while ((c = getopt(argc, argv, "ds:p:u:g:")) != -1) {
+	while ((c = getopt(argc, argv, "ds:p:u:g:m:")) != -1) {
 		switch (c) {
 		case 's':
 			sockname = strdup(optarg);
@@ -223,16 +224,17 @@ int main(int argc, char **argv)
 		case 'g':
 			gid = get_gid(optarg);
 			break;
+		case 'm':
+			um = atoi(optarg);
+			break;
 		}
 	}
-
-	if (uid != -1) setuid(uid);
-	if (gid != -1) setgid(gid);
 
 	if (!sockname) {
 		fprintf(stderr, "%s: Missing required -s argument\n", argv[0]);
 		exit(EX_USAGE);
 	}
+
 	if (pidfilename) {
 		unlink(pidfilename);
 		pidfile = fopen(pidfilename, "w");
@@ -243,6 +245,11 @@ int main(int argc, char **argv)
 		}
 		free(pidfilename);
 	}
+
+	if (uid != (uid_t)-1) setuid(uid);
+	if (gid != (gid_t)-1) setgid(gid);
+	if (um != (mode_t)-1) umask(um);
+
 	if (daemonize) {
 		if (daemon(0, 0) == -1) {
 			fprintf(stderr, "daemon() failed: %s\n", strerror(errno));
