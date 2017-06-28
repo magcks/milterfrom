@@ -26,13 +26,44 @@ mkdir /var/spool/postfix/milterfrom
 chown milterfrom:milterfrom /var/spool/postfix/milterfrom
 ```
 
-main.cf (If you don't use OpenDKIM, remove it):
+```bash
+cp milterfrom /usr/local/bin
+```
+```bash
+nano /etc/systemd/system/milterfrom.service
+```
+```
+[Unit]
+Description=Milter which enforces equal envelope and header sender
+
+[Service]
+Type=forking
+PIDFile=/var/run/milterfrom.pid
+EnvironmentFile=-/etc/default/milterfrom
+ExecStart=/usr/local/bin/milterfrom -d -p /var/run/milterfrom.pid $OPTIONS
+ExecReload=/bin/kill -HUP $MAINPID
+
+[Install]
+WantedBy=multi-user.target
+```
+```bash
+nano /etc/default/milterfrom
+```
+```bash
+OPTIONS="-u milterfrom -g milterfrom -m 002 -s /var/spool/postfix/milterfrom/milterfrom"
+```
+
+Change the Postfix config file (if you don't use DKIM, remove the parts):
+```bash
+nano /etc/postfix/main.cf
+```
 ```
 smtpd_milters = unix:/milterfrom/milterfrom, unix:/opendkim/opendkim.sock
 non_smtpd_milters = unix:/milterfrom/milterfrom, unix:/opendkim/opendkim.sock
 ```
 
 ## Run
+To start the daemon directly, run the following:
 ```bash
 ./milterfrom -u milterfrom -g milterfrom -m 002 -d -p /var/run/milterfrom.pid -s /var/spool/postfix/milterfrom/milterfrom
 ```
