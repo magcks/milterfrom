@@ -39,6 +39,8 @@
 #include <sysexits.h>
 #include <unistd.h>
 #include <errno.h>
+#include <pwd.h>
+#include <grp.h>
 
 #include "libmilter/mfapi.h"
 #include "libmilter/mfdef.h"
@@ -185,13 +187,26 @@ struct smfiDesc smfilter =
 	mlfi_negotiate       /* option negotiation at connection startup */
 };
 
+uid_t get_uid(const char *name)
+{
+    struct passwd *pwd = getpwnam(name);
+    return pwd == NULL ? -1 : pwd->pw_uid;
+}
+gid_t get_gid(const char *name)
+{
+    struct group *grp = getgrnam(name);
+    return grp == NULL ? -1 : grp->gr_gid;
+}
+
+
 int main(int argc, char **argv)
 {
 	int c, daemonize = 0;
+	uid_t uid = -1; gid_t gid = -1;
 	char *pidfilename = NULL, *sockname = NULL;
 	FILE *pidfile = NULL;
 
-	while ((c = getopt(argc, argv, "ds:p:")) != -1) {
+	while ((c = getopt(argc, argv, "ds:p:u:g:")) != -1) {
 		switch (c) {
 		case 's':
 			sockname = strdup(optarg);
@@ -202,8 +217,18 @@ int main(int argc, char **argv)
 		case 'd':
 			daemonize = 1;
 			break;
+		case 'u':
+			uid = get_uid(optarg);
+			break;
+		case 'g':
+			gid = get_gid(optarg);
+			break;
 		}
 	}
+
+	if (uid != -1) setuid(uid);
+	if (gid != -1) setgid(gid);
+
 	if (!sockname) {
 		fprintf(stderr, "%s: Missing required -s argument\n", argv[0]);
 		exit(EX_USAGE);
