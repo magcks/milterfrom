@@ -66,6 +66,43 @@ smtpd_milters = unix:/milterfrom/milterfrom, unix:/opendkim/opendkim.sock
 non_smtpd_milters = unix:/milterfrom/milterfrom, unix:/opendkim/opendkim.sock
 ```
 
+```bash
+systemctl enable milterfrom
+service postfix restart
+service milterfrom start
+```
+
+## Example
+```bash
+openssl s_client -connect mail.example.invalid -starttls smtp
+```
+```
+CONNECTED(00000003)
+[TLS stuff]
+---
+250 DSN
+auth login
+[...]
+235 2.7.0 Authentication successful
+mail from: theuser@example.invalid
+250 2.1.0 Ok
+rcpt to: someuser@external.invalid
+250 2.1.5 Ok
+data
+354 End data with <CR><LF>.<CR><LF>
+From: anotheruser@example.invalid
+To: someuser@external.invalid
+Subject: Spam
+
+Hey! :)
+.
+550 5.7.1 Rejected due to unmatching envelope and header sender.
+quit
+221 2.0.0 Bye
+closed
+
+```
+
 ## Run
 To start the daemon directly, run the following:
 ```bash
