@@ -22,7 +22,6 @@ make
 apt-get install git cmake make gcc libmilter1.0.1 libmilter-dev
 ```
 
-```
 ```bash
 groupadd milterfrom
 useradd -g milterfrom -s /bin/false -d /var/spool/postfix/milterfrom milterfrom
