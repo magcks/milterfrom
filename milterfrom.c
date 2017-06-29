@@ -45,8 +45,7 @@
 #include "libmilter/mfapi.h"
 #include "libmilter/mfdef.h"
 
-struct mlfiPriv
-{
+struct mlfiPriv {
 	int is_auth;
 	char *env_from;
 	int env_from_len;
@@ -133,8 +132,7 @@ sfsistat mlfi_header(SMFICTX *ctx, char *headerf, char *headerv)
 	return ((mta_caps & SMFIP_NR_HDR) != 0) ? SMFIS_NOREPLY : SMFIS_CONTINUE;
 }
 
-sfsistat
-mlfi_eom(SMFICTX *ctx)
+sfsistat mlfi_eom(SMFICTX *ctx)
 {
 	struct mlfiPriv *priv = MLFIPRIV;
 	if (priv->reject) {
@@ -147,15 +145,13 @@ mlfi_eom(SMFICTX *ctx)
 }
 
 
-sfsistat
-mlfi_abort(SMFICTX *ctx)
+sfsistat mlfi_abort(SMFICTX *ctx)
 {
 	mlfi_cleanup(ctx);
 	return SMFIS_CONTINUE;
 }
 
-sfsistat
-mlfi_negotiate(SMFICTX *ctx, unsigned long f0, unsigned long f1, unsigned long f2, unsigned long f3, unsigned long *pf0, unsigned long *pf1, unsigned long *pf2, unsigned long *pf3)
+sfsistat mlfi_negotiate(SMFICTX *ctx, unsigned long f0, unsigned long f1, unsigned long f2, unsigned long f3, unsigned long *pf0, unsigned long *pf1, unsigned long *pf2, unsigned long *pf3)
 {
 	*pf0 = 0;
 	/* milter protocol steps: all but connect, HELO, RCPT */
