@@ -1,5 +1,5 @@
 /* 
- * Argument parser
+ * Milterfrom
  * 
  * Copyright (c) 2017, Max von Buelow
  * All rights reserved.
