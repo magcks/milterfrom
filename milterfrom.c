@@ -155,7 +155,7 @@ sfsistat mlfi_negotiate(SMFICTX *ctx, unsigned long f0, unsigned long f1, unsign
 {
 	*pf0 = 0;
 	/* milter protocol steps: all but connect, HELO, RCPT */
-	*pf1 = SMFIP_NOCONNECT|SMFIP_NOHELO|SMFIP_NORCPT;
+	*pf1 = SMFIP_NOCONNECT | SMFIP_NOHELO | SMFIP_NORCPT;
 	mta_caps = f1;
 	if ((mta_caps & SMFIP_NR_HDR) != 0) *pf1 |= SMFIP_NR_HDR;
 	*pf2 = 0;

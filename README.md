@@ -6,10 +6,13 @@ It aims to resolve the problem that OpenDKIM signs ALL mails with domains listed
 The postconf option "reject_authenticated_sender_login_mismatch" doesn't solve the problem at all, because it only enforces the envelope sender to be correct. This milter further ensures that the sender specified in the header matches the envelope sender.
 
 ## Beta
-This code is beta. It would be great if someone who has more experience with libmilter would look at my code and send me some feedback. The code is really short (one file with 270 lines) and based on the libmilter example. 
+This code is beta. It would be great if someone who has more experience with libmilter would look at my code and send me some feedback. The code is really short (one file with 270 lines) and based on the libmilter example.
+
+## Dependencies (as Debian package names)
+* git cmake make gcc
+* libmilter1.0.1 libmilter-dev
 
 ## Build
-As always:
 ```bash
 mkdir build
 cd $_
@@ -17,11 +20,8 @@ cmake ..
 make
 ```
 
-## Postfix (on Debian)
-```bash
-apt-get install git cmake make gcc libmilter1.0.1 libmilter-dev
-```
-
+## Install (on a Systemd environment)
+Add a user:
 ```bash
 groupadd milterfrom
 useradd -g milterfrom -s /bin/false -d /var/spool/postfix/milterfrom milterfrom
@@ -30,51 +30,28 @@ mkdir /var/spool/postfix/milterfrom
 chown milterfrom:milterfrom /var/spool/postfix/milterfrom
 ```
 
+Move the binary and the service file:
 ```bash
 cp milterfrom /usr/local/bin
-```
-```bash
-nano /etc/systemd/system/milterfrom.service
-```
-```
-[Unit]
-Description=Milter which enforces equal envelope and header sender
-
-[Service]
-Type=forking
-PIDFile=/var/run/milterfrom.pid
-EnvironmentFile=-/etc/default/milterfrom
-ExecStart=/usr/local/bin/milterfrom -d -p /var/run/milterfrom.pid $OPTIONS
-ExecReload=/bin/kill -HUP $MAINPID
-
-[Install]
-WantedBy=multi-user.target
-```
-```bash
-nano /etc/default/milterfrom
-```
-```bash
-OPTIONS="-u milterfrom -g milterfrom -m 002 -s /var/spool/postfix/milterfrom/milterfrom"
+cp ../milterfrom.service /etc/systemd/system/
 ```
 
-Change the Postfix config file (if you don't use DKIM, remove the parts):
-```bash
-nano /etc/postfix/main.cf
+Configure postfix to use the milter:
 ```
-```
-smtpd_milters = unix:/milterfrom/milterfrom, unix:/opendkim/opendkim.sock
-non_smtpd_milters = unix:/milterfrom/milterfrom, unix:/opendkim/opendkim.sock
+postconf -e "smtpd_milters = unix:/milterfrom/milterfrom$([[ $(postconf -h smtpd_milters) != "" ]] && echo -n ", " && postconf -h smtpd_milters)"
+postconf -e "non_smtpd_milters = unix:/milterfrom/milterfrom$([[ $(postconf -h non_smtpd_milters) != "" ]] && echo -n ", " && postconf -h non_smtpd_milters)"
 ```
 
+Start everything:
 ```bash
 systemctl enable milterfrom
-service postfix restart
 service milterfrom start
+service postfix restart
 ```
 
 ## Example
 ```bash
-openssl s_client -connect mail.example.invalid -starttls smtp
+openssl s_client -connect mail.coolkids.invalid -starttls smtp
 ```
 ```
 CONNECTED(00000003)
@@ -84,27 +61,30 @@ CONNECTED(00000003)
 auth login
 [...]
 235 2.7.0 Authentication successful
-mail from: theuser@example.invalid
+mail from: chantal@coolkids.invalid
 250 2.1.0 Ok
-rcpt to: someuser@external.invalid
+rcpt to: justin@external.invalid
 250 2.1.5 Ok
 data
 354 End data with <CR><LF>.<CR><LF>
-From: anotheruser@example.invalid
-To: someuser@external.invalid
-Subject: Spam
+From: jacqueline@coolkids.invalid
+To: justin@coolkids.invalid
+Subject: Diese Mail ist super vertrauemswuerdig!11
 
-Hey! :)
+Hey Justin,
+
+i bims Jacqueline. Ich liebe dich lol!
+
+Deine Jacqueline
 .
 550 5.7.1 Rejected due to unmatching envelope and header sender.
 quit
 221 2.0.0 Bye
 closed
-
 ```
 
 ## Run
-To start the daemon directly, run the following:
+To start the daemon directly, run the following (Remove the `-d` to run in foreground):
 ```bash
 ./milterfrom -u milterfrom -g milterfrom -m 002 -d -p /var/run/milterfrom.pid -s /var/spool/postfix/milterfrom/milterfrom
 ```
