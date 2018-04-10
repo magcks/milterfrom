@@ -91,17 +91,26 @@ void mlfi_cleanup(SMFICTX *ctx)
 sfsistat mlfi_envfrom(SMFICTX *ctx, char **envfrom)
 {
 	struct mlfiPriv *priv;
+	char *fromcp = NULL;
 
 	// Allocate some private memory.
-	priv = malloc(sizeof *priv);
-	if (priv == NULL) return SMFIS_TEMPFAIL;
-	memset(priv, '\0', sizeof *priv);
+	priv = calloc(1, sizeof(*priv));
+	if (priv == NULL) {
+		goto fail;
+	}
 
 	// Parse envelope from.
-	int len;
+	int len = 0;
 	const char *from = parse_address(*envfrom, &len);
-	char *fromcp = strndup(from, len);
-	if (fromcp == NULL) return SMFIS_TEMPFAIL;
+	if (len <= 0) {
+		/* The strndup call below with a length of 0 will allocate a string of size
+		 * 0 so avoid that entirely and fail. */
+		goto fail;
+	}
+	fromcp = strndup(from, len);
+	if (fromcp == NULL) {
+		goto fail;
+	}
 
 	// Set private values.
 	priv->is_auth = smfi_getsymval(ctx, "{auth_type}") ? 1 : 0;
@@ -112,6 +121,9 @@ sfsistat mlfi_envfrom(SMFICTX *ctx, char **envfrom)
 	smfi_setpriv(ctx, priv);
 
 	return SMFIS_CONTINUE;
+fail:
+	free(fromcp);
+	return SMFIS_TEMPFAIL;
 }
 
 sfsistat mlfi_header(SMFICTX *ctx, char *headerf, char *headerv)
