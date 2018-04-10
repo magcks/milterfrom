@@ -56,13 +56,15 @@ struct mlfiPriv {
 
 static unsigned long mta_caps = 0;
 
-// Function to extract addresses from the header/envelope fields.
-// If the field contains a < with a subsequent >, the inner part is used. If not, the whole header field is used. This allows matching "Max Mustermann <max.mustermann@example.invalid>" matching.
-const char *parse_address(const char *address, int *len)
+// Function to extract addresses from the header/envelope fields.  If the field
+// contains a < with a subsequent >, the inner part is used. If not, the whole
+// header field is used. This allows matching "Max Mustermann
+// <max.mustermann@example.invalid>" matching.
+const char *parse_address(const char *address, size_t *len)
 {
-	int inlen = strlen(address);
-	int pos_open = -1, pos_close = -1;
-	int i;
+	size_t inlen = strlen(address);
+	size_t pos_open = -1, pos_close = -1;
+	size_t i;
 	for (i = 0; i < inlen; ++i) {
 		if (address[i] == '<') pos_open = i;
 		else if (address[i] == '>') pos_close = i;
@@ -100,9 +102,9 @@ sfsistat mlfi_envfrom(SMFICTX *ctx, char **envfrom)
 	}
 
 	// Parse envelope from.
-	int len = 0;
+	size_t len = 0;
 	const char *from = parse_address(*envfrom, &len);
-	if (len <= 0) {
+	if (len == 0) {
 		/* The strndup call below with a length of 0 will allocate a string of size
 		 * 0 so avoid that entirely and fail. */
 		goto fail;
@@ -133,7 +135,7 @@ sfsistat mlfi_header(SMFICTX *ctx, char *headerf, char *headerv)
 	// Perform checks if the sender is authenticated and the message is not rejected yet (the mail may contain multiple from tags, all have to match!).
 	if (priv->is_auth && !priv->reject) {
 		if (strcasecmp(headerf, "from") == 0) {
-			int len = 0;
+			size_t len = 0;
 			const char *from = parse_address(headerv, &len);
 
 			// Check whether header from matches envelope from and reject if not.
