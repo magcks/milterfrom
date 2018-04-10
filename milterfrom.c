@@ -133,7 +133,7 @@ sfsistat mlfi_header(SMFICTX *ctx, char *headerf, char *headerv)
 	// Perform checks if the sender is authenticated and the message is not rejected yet (the mail may contain multiple from tags, all have to match!).
 	if (priv->is_auth && !priv->reject) {
 		if (strcasecmp(headerf, "from") == 0) {
-			int len;
+			int len = 0;
 			const char *from = parse_address(headerv, &len);
 
 			// Check whether header from matches envelope from and reject if not.
