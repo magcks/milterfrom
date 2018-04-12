@@ -11,4 +11,4 @@ find_package(Milter REQUIRED)
 
 include_directories(${Milter_INCLUDE_DIRS})
 add_executable(milterfrom milterfrom.c)
-target_link_libraries(milterfrom ${Milter_LIBRARY})
+target_link_libraries(milterfrom ${Milter_LIBRARY} ${CMAKE_THREAD_LIBS_INIT})
