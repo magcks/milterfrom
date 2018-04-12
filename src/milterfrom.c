@@ -49,7 +49,7 @@
 struct mlfiPriv {
 	int is_auth;
 	char *env_from;
-	int env_from_len;
+	size_t env_from_len;
 	int reject;
 };
 
