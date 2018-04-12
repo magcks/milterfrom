@@ -12,15 +12,22 @@ This code is beta. It would be great if someone who has more experience with lib
 * git cmake make gcc
 * libmilter1.0.1 libmilter-dev
 
-## Build
+## Build and install
 ```bash
 mkdir build
 cd $_
-cmake ..
+cmake -DWITH_SYSTEMD=ON ..
 make
+make install # this installs the executable and the Systemd unit
+systemctl daemon-reload
 ```
 
-## Install (on a Systemd environment)
+If you wish to install to a custom directory:
+```bash
+cmake -DWITH_SYSTEMD=ON -DCMAKE_INSTALL_PREFIX=/tmp/your/path ..
+```
+
+## Configure (on a Systemd and Postfix environment)
 Add a user:
 ```bash
 groupadd milterfrom
@@ -28,12 +35,6 @@ useradd -g milterfrom -s /bin/false -d /var/spool/postfix/milterfrom milterfrom
 adduser postfix milterfrom
 mkdir /var/spool/postfix/milterfrom
 chown milterfrom:milterfrom /var/spool/postfix/milterfrom
-```
-
-Move the binary and the service file:
-```bash
-cp milterfrom /usr/local/bin
-cp ../systemd/milterfrom.service /etc/systemd/system/
 ```
 
 Configure postfix to use the milter:
@@ -86,7 +87,7 @@ closed
 ## Run
 To start the daemon directly, run the following (Remove the `-d` to run in foreground):
 ```bash
-./milterfrom -u milterfrom -g milterfrom -m 002 -d -p /var/run/milterfrom.pid -s /var/spool/postfix/milterfrom/milterfrom
+milterfrom -u milterfrom -g milterfrom -m 002 -d -p /var/run/milterfrom.pid -s /var/spool/postfix/milterfrom/milterfrom
 ```
 
 ## License
