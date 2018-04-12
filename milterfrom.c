@@ -41,6 +41,7 @@
 #include <errno.h>
 #include <pwd.h>
 #include <grp.h>
+#include <stdint.h>
 
 #include "libmilter/mfapi.h"
 #include "libmilter/mfdef.h"
@@ -59,18 +60,18 @@ static unsigned long mta_caps = 0;
 // Function to extract addresses from the header/envelope fields.  If the field
 // contains a < with a subsequent >, the inner part is used. If not, the whole
 // header field is used. This allows matching "Max Mustermann
-// <max.mustermann@example.invalid>" matching.
+// <max.mustermann@example.invalid>".
 const char *parse_address(const char *address, size_t *len)
 {
 	size_t inlen = strlen(address);
-	size_t pos_open = -1, pos_close = -1;
+	size_t pos_open = SIZE_MAX, pos_close = SIZE_MAX;
 	size_t i;
 	for (i = 0; i < inlen; ++i) {
 		if (address[i] == '<') pos_open = i;
 		else if (address[i] == '>') pos_close = i;
 	}
 
-	if (pos_open != -1 && pos_close != -1 && pos_open < pos_close) {
+	if (pos_open != SIZE_MAX && pos_close != SIZE_MAX && pos_open < pos_close) {
 		*len = pos_close - pos_open - 1;
 		return address + pos_open + 1;
 	} else {
