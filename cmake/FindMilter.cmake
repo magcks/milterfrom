@@ -28,7 +28,7 @@ find_library(Milter_LIBRARY
 	/sw/lib
 )
 
-SET(Milter_FOUND FALSE)
-IF(Milter_INCLUDE_DIR AND Milter_LIBRARY)
-	SET(Milter_FOUND TRUE)
-ENDIF(Milter_INCLUDE_DIR AND Milter_LIBRARY)
+set(Milter_FOUND FALSE)
+if(Milter_INCLUDE_DIR AND Milter_LIBRARY)
+	set(Milter_FOUND TRUE)
+endif(Milter_INCLUDE_DIR AND Milter_LIBRARY)

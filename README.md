@@ -33,7 +33,7 @@ chown milterfrom:milterfrom /var/spool/postfix/milterfrom
 Move the binary and the service file:
 ```bash
 cp milterfrom /usr/local/bin
-cp ../milterfrom.service /etc/systemd/system/
+cp ../systemd/milterfrom.service /etc/systemd/system/
 ```
 
 Configure postfix to use the milter:

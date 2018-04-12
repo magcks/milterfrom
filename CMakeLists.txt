@@ -1,14 +1,12 @@
-cmake_minimum_required(VERSION 2.9)
+cmake_minimum_required(VERSION 3.0)
 
 project(MilterFrom C)
 
-set(CMAKE_CXX_STANDARD 11)
-
-list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR})
+list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 
 find_package(Threads REQUIRED)
 find_package(Milter REQUIRED)
 
-include_directories(${Milter_INCLUDE_DIRS})
-add_executable(milterfrom milterfrom.c)
+add_executable(milterfrom src/milterfrom.c)
+target_include_directories(milterfrom PRIVATE ${Milter_INCLUDE_DIRS})
 target_link_libraries(milterfrom ${Milter_LIBRARY} ${CMAKE_THREAD_LIBS_INIT})
