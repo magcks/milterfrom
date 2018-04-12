@@ -4,7 +4,7 @@ Description=A milter that enforces equal envelope and header sender
 [Service]
 Type=forking
 PIDFile=/var/run/milterfrom.pid
-ExecStart=/usr/local/bin/milterfrom -d -p /var/run/milterfrom.pid -u milterfrom -g milterfrom -m 002 -s /var/spool/postfix/milterfrom/milterfrom
+ExecStart=@CMAKE_INSTALL_PREFIX@/bin/milterfrom -d -p /var/run/milterfrom.pid -u milterfrom -g milterfrom -m 002 -s /var/spool/postfix/milterfrom/milterfrom
 ExecReload=/bin/kill -HUP $MAINPID
 
 [Install]
