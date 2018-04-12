@@ -1,0 +1,7 @@
+# Files
+*.o
+cscope.files
+cscope.out
+
+# Directory
+build/

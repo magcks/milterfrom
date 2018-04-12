@@ -41,6 +41,7 @@
 #include <errno.h>
 #include <pwd.h>
 #include <grp.h>
+#include <stdint.h>
 
 #include "libmilter/mfapi.h"
 #include "libmilter/mfdef.h"
@@ -56,19 +57,21 @@ struct mlfiPriv {
 
 static unsigned long mta_caps = 0;
 
-// Function to extract addresses from the header/envelope fields.
-// If the field contains a < with a subsequent >, the inner part is used. If not, the whole header field is used. This allows matching "Max Mustermann <max.mustermann@example.invalid>" matching.
-const char *parse_address(const char *address, int *len)
+// Function to extract addresses from the header/envelope fields.  If the field
+// contains a < with a subsequent >, the inner part is used. If not, the whole
+// header field is used. This allows matching "Max Mustermann
+// <max.mustermann@example.invalid>".
+const char *parse_address(const char *address, size_t *len)
 {
-	int inlen = strlen(address);
-	int pos_open = -1, pos_close = -1;
-	int i;
+	size_t inlen = strlen(address);
+	size_t pos_open = SIZE_MAX, pos_close = SIZE_MAX;
+	size_t i;
 	for (i = 0; i < inlen; ++i) {
 		if (address[i] == '<') pos_open = i;
 		else if (address[i] == '>') pos_close = i;
 	}
 
-	if (pos_open != -1 && pos_close != -1 && pos_open < pos_close) {
+	if (pos_open != SIZE_MAX && pos_close != SIZE_MAX && pos_open < pos_close) {
 		*len = pos_close - pos_open - 1;
 		return address + pos_open + 1;
 	} else {
@@ -91,17 +94,26 @@ void mlfi_cleanup(SMFICTX *ctx)
 sfsistat mlfi_envfrom(SMFICTX *ctx, char **envfrom)
 {
 	struct mlfiPriv *priv;
+	char *fromcp = NULL;
 
 	// Allocate some private memory.
-	priv = malloc(sizeof *priv);
-	if (priv == NULL) return SMFIS_TEMPFAIL;
-	memset(priv, '\0', sizeof *priv);
+	priv = calloc(1, sizeof(*priv));
+	if (priv == NULL) {
+		goto fail;
+	}
 
 	// Parse envelope from.
-	int len;
+	size_t len = 0;
 	const char *from = parse_address(*envfrom, &len);
-	char *fromcp = strndup(from, len);
-	if (fromcp == NULL) return SMFIS_TEMPFAIL;
+	if (len == 0) {
+		/* The strndup call below with a length of 0 will allocate a string of size
+		 * 0 so avoid that entirely and fail. */
+		goto fail;
+	}
+	fromcp = strndup(from, len);
+	if (fromcp == NULL) {
+		goto fail;
+	}
 
 	// Set private values.
 	priv->is_auth = smfi_getsymval(ctx, "{auth_type}") ? 1 : 0;
@@ -112,6 +124,9 @@ sfsistat mlfi_envfrom(SMFICTX *ctx, char **envfrom)
 	smfi_setpriv(ctx, priv);
 
 	return SMFIS_CONTINUE;
+fail:
+	free(fromcp);
+	return SMFIS_TEMPFAIL;
 }
 
 sfsistat mlfi_header(SMFICTX *ctx, char *headerf, char *headerv)
@@ -121,7 +136,7 @@ sfsistat mlfi_header(SMFICTX *ctx, char *headerf, char *headerv)
 	// Perform checks if the sender is authenticated and the message is not rejected yet (the mail may contain multiple from tags, all have to match!).
 	if (priv->is_auth && !priv->reject) {
 		if (strcasecmp(headerf, "from") == 0) {
-			int len;
+			size_t len = 0;
 			const char *from = parse_address(headerv, &len);
 
 			// Check whether header from matches envelope from and reject if not.
