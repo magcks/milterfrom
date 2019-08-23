@@ -87,5 +87,14 @@ To start the daemon directly, run the following (Remove the `-d` to run in foreg
 milterfrom -u milterfrom -g milterfrom -m 002 -d -p /var/run/milterfrom.pid -s /var/spool/postfix/milterfrom/milterfrom
 ```
 
+## Run via Docker
+
+```bash
+docker build -t milterfrom .
+docker run --restart=unless-stopped --daemon --name milterfrom milterfrom:latest
+postconf -e "smtpd_milters = tcp:milterfrom:8890$([[ $(postconf -h smtpd_milters) != "" ]] && echo -n ", " && postconf -h smtpd_milters)"
+postconf -e "non_smtpd_milters = tcp:milterfrom:8890$([[ $(postconf -h non_smtpd_milters) != "" ]] && echo -n ", " && postconf -h non_smtpd_milters)"
+```
+
 ## License
 Licensed under the 3-Clause BSD License.
