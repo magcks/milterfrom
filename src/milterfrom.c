@@ -99,20 +99,20 @@ sfsistat mlfi_envfrom(SMFICTX *ctx, char **envfrom)
 	// Allocate some private memory.
 	priv = calloc(1, sizeof(*priv));
 	if (priv == NULL) {
-		goto fail;
+		return SMFIS_TEMPFAIL;
 	}
 
 	// Parse envelope from.
 	size_t len = 0;
 	const char *from = parse_address(*envfrom, &len);
 	if (len == 0) {
-		/* The strndup call below with a length of 0 will allocate a string of size
-		 * 0 so avoid that entirely and fail. */
-		goto fail;
+		/* A 0 length from address means a "null reverse-path", which is valid per
+		 * RFC5321. */
+		return SMFIS_CONTINUE;
 	}
 	fromcp = strndup(from, len);
 	if (fromcp == NULL) {
-		goto fail;
+		return SMFIS_TEMPFAIL;
 	}
 
 	// Set private values.
@@ -124,9 +124,6 @@ sfsistat mlfi_envfrom(SMFICTX *ctx, char **envfrom)
 	smfi_setpriv(ctx, priv);
 
 	return SMFIS_CONTINUE;
-fail:
-	free(fromcp);
-	return SMFIS_TEMPFAIL;
 }
 
 sfsistat mlfi_header(SMFICTX *ctx, char *headerf, char *headerv)
