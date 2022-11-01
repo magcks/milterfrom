@@ -130,6 +130,8 @@ sfsistat mlfi_header(SMFICTX *ctx, char *headerf, char *headerv)
 {
 	struct mlfiPriv *priv = MLFIPRIV;
 
+	if (priv == NULL) return SMFIS_CONTINUE;
+
 	// Perform checks if the sender is authenticated and the message is not rejected yet (the mail may contain multiple from tags, all have to match!).
 	if (priv->is_auth && !priv->reject) {
 		if (strcasecmp(headerf, "from") == 0) {
@@ -147,6 +149,9 @@ sfsistat mlfi_header(SMFICTX *ctx, char *headerf, char *headerv)
 sfsistat mlfi_eom(SMFICTX *ctx)
 {
 	struct mlfiPriv *priv = MLFIPRIV;
+
+	if (priv == NULL) return SMFIS_CONTINUE;
+
 	if (priv->reject) {
 		smfi_setreply(ctx, "550", "5.7.1", "Rejected due to unmatching envelope and header sender.");
 		mlfi_cleanup(ctx);
