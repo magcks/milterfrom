@@ -42,6 +42,7 @@
 #include <pwd.h>
 #include <grp.h>
 #include <stdint.h>
+#include <syslog.h>
 
 #include "libmilter/mfapi.h"
 #include "libmilter/mfdef.h"
@@ -54,6 +55,9 @@ struct mlfiPriv {
 };
 
 #define MLFIPRIV ((struct mlfiPriv*)smfi_getpriv(ctx))
+#define VERSION "1.0.1"
+
+extern const char *__progname;
 
 static unsigned long mta_caps = 0;
 
@@ -139,7 +143,10 @@ sfsistat mlfi_header(SMFICTX *ctx, char *headerf, char *headerv)
 			const char *from = parse_address(headerv, &len);
 
 			// Check whether header from matches envelope from and reject if not.
-			if (len != priv->env_from_len || strncasecmp(from, priv->env_from, len) != 0) priv->reject = 1;
+			if (len != priv->env_from_len || strncasecmp(from, priv->env_from, len) != 0) {
+			  priv->reject = 1;
+			  syslog(LOG_NOTICE,"Envelope From (%s) and Header From (%s) mismatch ", priv->env_from, from);
+			}
 		}
 	}
 
@@ -211,6 +218,18 @@ gid_t get_gid(const char *name)
     return grp == NULL ? -1 : grp->gr_gid;
 }
 
+static int usage(void) {
+    fprintf(stderr,"%s: A Milter program version %s to reject emails that have a mismatch between Envelope Sender and email Header From fields for authenticated users. This prevents spoofing that is currently not possible with \"reject_authenticated_sender_login_mismatch\" in Postfix\n", __progname,VERSION);
+    fprintf(stderr, "%s: usage: %s -s socketfile [options]\n"
+	     "\t-p pidfile  \twrite process ID to pidfile name\n"
+	     "\t-d          \tdaemonize to background and exit\n"
+	     "\t-u userid   \tchange to specified userid\n"
+	     "\t-g groupid  \tchange to specific groupid\n"
+	     "\t-v          \tprint version number and terminate\n",
+	    __progname,__progname);
+    return EX_USAGE;
+}
+
 int main(int argc, char **argv)
 {
 	int c, daemonize = 0;
@@ -218,8 +237,11 @@ int main(int argc, char **argv)
 	mode_t um = -1;
 	char *pidfilename = NULL, *sockname = NULL;
 	FILE *pidfile = NULL;
+	u_int mvmajor;
+	u_int mvminor;
+	u_int mvrelease;
 
-	while ((c = getopt(argc, argv, "ds:p:u:g:m:")) != -1) {
+	while ((c = getopt(argc, argv, "dhvs:p:u:g:m:")) != -1) {
 		switch (c) {
 		case 's':
 			sockname = strdup(optarg);
@@ -239,6 +261,16 @@ int main(int argc, char **argv)
 		case 'm':
 			um = strtol(optarg, 0, 8);
 			break;
+		case 'h':
+		       return usage();
+		case 'v':
+		       fprintf(stderr,"%s: v%s\n", __progname, VERSION);
+		       fprintf(stderr,"\tSMFI_VERSION 0x%x\n", SMFI_VERSION);
+
+		       (void) smfi_version(&mvmajor, &mvminor, &mvrelease);
+		       fprintf(stderr,"\tlibmilter version %d.%d.%d\n",
+			       mvmajor, mvminor, mvrelease);
+		       return EX_USAGE;
 		}
 	}
 
@@ -282,5 +314,6 @@ int main(int argc, char **argv)
 		fprintf(stderr, "smfi_register failed\n");
 		exit(EX_UNAVAILABLE);
 	}
+        openlog ("milterfrom", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_MAIL);
 	return smfi_main();
 }
