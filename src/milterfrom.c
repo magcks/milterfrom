@@ -144,8 +144,8 @@ sfsistat mlfi_header(SMFICTX *ctx, char *headerf, char *headerv)
 
 			// Check whether header from matches envelope from and reject if not.
 			if (len != priv->env_from_len || strncasecmp(from, priv->env_from, len) != 0) {
-			  priv->reject = 1;
-			  syslog(LOG_NOTICE,"Envelope From (%s) and Header From (%s) mismatch ", priv->env_from, from);
+				priv->reject = 1;
+				syslog(LOG_NOTICE,"Envelope From (%s) and Header From (%s) mismatch ", priv->env_from, from);
 			}
 		}
 	}
@@ -218,9 +218,9 @@ gid_t get_gid(const char *name)
 	return grp == NULL ? -1 : grp->gr_gid;
 }
 
-static void usage(void) {
-	printf("%s: A Milter program version %s to reject emails that have a mismatch between Envelope Sender and email Header From fields for authenticated users. This prevents spoofing that is currently not possible with \"reject_authenticated_sender_login_mismatch\" in Postfix\n", __progname, VERSION);
-	printf("%s: usage: %s -s socketfile [options]\n"
+static void usage(FILE *stream) {
+	fprintf(stream, "%s: A Milter program version %s to reject emails that have a mismatch between Envelope Sender and email Header From fields for authenticated users. This prevents spoofing that is currently not possible with \"reject_authenticated_sender_login_mismatch\" in Postfix\n", __progname, VERSION);
+	fprintf(stream, "%s: usage: %s -s socketfile [options]\n"
 		"\t-p pidfile  \twrite process ID to pidfile name\n"
 		"\t-d          \tdaemonize to background and exit\n"
 		"\t-u userid   \tchange to specified userid\n"
@@ -261,7 +261,7 @@ int main(int argc, char **argv)
 			um = strtol(optarg, 0, 8);
 			break;
 		case 'h':
-			usage();
+			usage(stdout);
 			return EXIT_SUCCESS;
 		case 'v':
 			printf("%s: v%s\n", __progname, VERSION);
@@ -275,7 +275,7 @@ int main(int argc, char **argv)
 
 	if (!sockname) {
 		fprintf(stderr, "%s: Missing required -s argument\n", argv[0]);
-		usage();
+		usage(stderr);
 		return EX_USAGE;
 	}
 
