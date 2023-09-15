@@ -209,25 +209,24 @@ struct smfiDesc smfilter =
 
 uid_t get_uid(const char *name)
 {
-    struct passwd *pwd = getpwnam(name);
-    return pwd == NULL ? -1 : pwd->pw_uid;
+	struct passwd *pwd = getpwnam(name);
+	return pwd == NULL ? -1 : pwd->pw_uid;
 }
 gid_t get_gid(const char *name)
 {
-    struct group *grp = getgrnam(name);
-    return grp == NULL ? -1 : grp->gr_gid;
+	struct group *grp = getgrnam(name);
+	return grp == NULL ? -1 : grp->gr_gid;
 }
 
-static int usage(void) {
-    fprintf(stderr,"%s: A Milter program version %s to reject emails that have a mismatch between Envelope Sender and email Header From fields for authenticated users. This prevents spoofing that is currently not possible with \"reject_authenticated_sender_login_mismatch\" in Postfix\n", __progname,VERSION);
-    fprintf(stderr, "%s: usage: %s -s socketfile [options]\n"
-	     "\t-p pidfile  \twrite process ID to pidfile name\n"
-	     "\t-d          \tdaemonize to background and exit\n"
-	     "\t-u userid   \tchange to specified userid\n"
-	     "\t-g groupid  \tchange to specific groupid\n"
-	     "\t-v          \tprint version number and terminate\n",
-	    __progname,__progname);
-    return EX_USAGE;
+static void usage(void) {
+	printf("%s: A Milter program version %s to reject emails that have a mismatch between Envelope Sender and email Header From fields for authenticated users. This prevents spoofing that is currently not possible with \"reject_authenticated_sender_login_mismatch\" in Postfix\n", __progname, VERSION);
+	printf("%s: usage: %s -s socketfile [options]\n"
+		"\t-p pidfile  \twrite process ID to pidfile name\n"
+		"\t-d          \tdaemonize to background and exit\n"
+		"\t-u userid   \tchange to specified userid\n"
+		"\t-g groupid  \tchange to specific groupid\n"
+		"\t-v          \tprint version number and terminate\n",
+		__progname,__progname);
 }
 
 int main(int argc, char **argv)
@@ -262,28 +261,28 @@ int main(int argc, char **argv)
 			um = strtol(optarg, 0, 8);
 			break;
 		case 'h':
-		       return usage();
+			usage();
+			return EXIT_SUCCESS;
 		case 'v':
-		       fprintf(stderr,"%s: v%s\n", __progname, VERSION);
-		       fprintf(stderr,"\tSMFI_VERSION 0x%x\n", SMFI_VERSION);
+			printf("%s: v%s\n", __progname, VERSION);
+			printf("\tSMFI_VERSION 0x%x\n", SMFI_VERSION);
 
-		       (void) smfi_version(&mvmajor, &mvminor, &mvrelease);
-		       fprintf(stderr,"\tlibmilter version %d.%d.%d\n",
-			       mvmajor, mvminor, mvrelease);
-		       return EX_USAGE;
+			(void)smfi_version(&mvmajor, &mvminor, &mvrelease);
+			printf("\tlibmilter version %d.%d.%d\n", mvmajor, mvminor, mvrelease);
+			return EXIT_SUCCESS;
 		}
 	}
 
 	if (!sockname) {
 		fprintf(stderr, "%s: Missing required -s argument\n", argv[0]);
-		exit(EX_USAGE);
+		usage();
+		return EX_USAGE;
 	}
 
 	if (pidfilename) {
 		unlink(pidfilename);
 		pidfile = fopen(pidfilename, "w");
-		if (!pidfile)
-		{
+		if (!pidfile) {
 			fprintf(stderr, "Could not open pidfile: %s\n", strerror(errno));
 			exit(1);
 		}
@@ -314,6 +313,6 @@ int main(int argc, char **argv)
 		fprintf(stderr, "smfi_register failed\n");
 		exit(EX_UNAVAILABLE);
 	}
-        openlog ("milterfrom", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_MAIL);
+        openlog("milterfrom", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_MAIL);
 	return smfi_main();
 }
