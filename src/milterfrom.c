@@ -226,7 +226,7 @@ static void usage(FILE *stream) {
 		"\t-u userid   \tchange to specified userid\n"
 		"\t-g groupid  \tchange to specific groupid\n"
 		"\t-v          \tprint version number and terminate\n",
-		__progname,__progname);
+		__progname, __progname);
 }
 
 int main(int argc, char **argv)
