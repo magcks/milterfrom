@@ -112,7 +112,10 @@ sfsistat mlfi_envfrom(SMFICTX *ctx, char **envfrom)
 	if (len == 0) {
 		/* A 0 length from address means a "null reverse-path", which is valid per
 		 * RFC5321. */
-		return SMFIS_CONTINUE;
+		const char *author = smfi_getsymval(ctx, "{auth_authen}");
+		const char *info = smfi_getsymval(ctx,"_");
+		syslog(LOG_INFO,"Envelope sender is null for authenticated user %s from %s",author,info);
+		return SMFIS_ACCEPT;
 	}
 	fromcp = strndup(from, len);
 	if (fromcp == NULL) {
