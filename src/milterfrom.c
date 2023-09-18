@@ -55,7 +55,7 @@ struct mlfiPriv {
 };
 
 #define MLFIPRIV ((struct mlfiPriv*)smfi_getpriv(ctx))
-#define VERSION "1.0.1"
+#define VERSION "1.0.2"
 
 extern const char *__progname;
 
@@ -83,6 +83,13 @@ const char *parse_address(const char *address, size_t *len)
 		return address;
 	}
 }
+
+void log_event(SMFICTX *ctx, char *msg) {
+	/* Log event with additional information */
+	const char *author = smfi_getsymval(ctx, "{auth_authen}");
+	const char *info = smfi_getsymval(ctx,"_");
+	syslog(LOG_INFO,"%s for authenticated user (%s) from (%s)", msg, author, info);
+} 
 
 void mlfi_cleanup(SMFICTX *ctx)
 {
@@ -112,9 +119,7 @@ sfsistat mlfi_envfrom(SMFICTX *ctx, char **envfrom)
 	if (len == 0) {
 		/* A 0 length from address means a "null reverse-path", which is valid per
 		 * RFC5321. */
-		const char *author = smfi_getsymval(ctx, "{auth_authen}");
-		const char *info = smfi_getsymval(ctx,"_");
-		syslog(LOG_INFO,"Envelope sender is null for authenticated user %s from %s",author,info);
+		log_event(ctx, "Accepting message as envelope sender is null");
 		return SMFIS_ACCEPT;
 	}
 	fromcp = strndup(from, len);
@@ -136,6 +141,8 @@ sfsistat mlfi_envfrom(SMFICTX *ctx, char **envfrom)
 sfsistat mlfi_header(SMFICTX *ctx, char *headerf, char *headerv)
 {
 	struct mlfiPriv *priv = MLFIPRIV;
+	char *msg;
+	size_t msg_len = 0;
 
 	if (priv == NULL) return SMFIS_CONTINUE;
 
@@ -148,7 +155,11 @@ sfsistat mlfi_header(SMFICTX *ctx, char *headerf, char *headerv)
 			// Check whether header from matches envelope from and reject if not.
 			if (len != priv->env_from_len || strncasecmp(from, priv->env_from, len) != 0) {
 				priv->reject = 1;
-				syslog(LOG_NOTICE,"Envelope From (%s) and Header From (%s) mismatch ", priv->env_from, from);
+				msg_len = 55 + len + priv->env_from_len;
+				msg = malloc(msg_len);
+				snprintf(msg, msg_len, "Rejecting Envelope From (%s) and Header From (%s) mismatch", priv->env_from, from);
+				log_event(ctx, msg);
+				free(msg);
 			}
 		}
 	}
