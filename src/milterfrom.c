@@ -141,8 +141,6 @@ sfsistat mlfi_envfrom(SMFICTX *ctx, char **envfrom)
 sfsistat mlfi_header(SMFICTX *ctx, char *headerf, char *headerv)
 {
 	struct mlfiPriv *priv = MLFIPRIV;
-	char *msg;
-	size_t msg_len = 0;
 
 	if (priv == NULL) return SMFIS_CONTINUE;
 
@@ -154,11 +152,16 @@ sfsistat mlfi_header(SMFICTX *ctx, char *headerf, char *headerv)
 
 			// Check whether header from matches envelope from and reject if not.
 			if (len != priv->env_from_len || strncasecmp(from, priv->env_from, len) != 0) {
+				char *msg;
+				size_t msg_len = 0;
+
 				priv->reject = 1;
 				msg_len = 55 + len + priv->env_from_len;
 				msg = malloc(msg_len);
-				snprintf(msg, msg_len, "Rejecting Envelope From (%s) and Header From (%s) mismatch", priv->env_from, from);
-				log_event(ctx, msg);
+				if (msg != NULL) { 
+					snprintf(msg, msg_len, "Rejecting Envelope From (%s) and Header From (%s) mismatch", priv->env_from, from);
+					log_event(ctx, msg);
+				}
 				free(msg);
 			}
 		}
