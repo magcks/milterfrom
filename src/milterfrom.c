@@ -44,6 +44,9 @@
 #include <stdint.h>
 #include <syslog.h>
 
+#include <ctype.h>
+#include <stddef.h>
+
 #include "libmilter/mfapi.h"
 #include "libmilter/mfdef.h"
 
@@ -55,7 +58,7 @@ struct mlfiPriv {
 };
 
 #define MLFIPRIV ((struct mlfiPriv*)smfi_getpriv(ctx))
-#define VERSION "1.0.2"
+#define VERSION "1.0.3"
 
 extern const char *__progname;
 
@@ -65,23 +68,54 @@ static unsigned long mta_caps = 0;
 // contains a < with a subsequent >, the inner part is used. If not, the whole
 // header field is used. This allows matching "Max Mustermann
 // <max.mustermann@example.invalid>".
-const char *parse_address(const char *address, size_t *len)
-{
-	size_t inlen = strlen(address);
-	size_t pos_open = SIZE_MAX, pos_close = SIZE_MAX;
-	size_t i;
-	for (i = 0; i < inlen; ++i) {
-		if (address[i] == '<') pos_open = i;
-		else if (address[i] == '>') pos_close = i;
-	}
+const char *parse_address(const char *header, size_t *len) {
+    if (!header || !len) return NULL;
 
-	if (pos_open != SIZE_MAX && pos_close != SIZE_MAX && pos_open < pos_close) {
-		*len = pos_close - pos_open - 1;
-		return address + pos_open + 1;
-	} else {
-		*len = inlen;
-		return address;
-	}
+    const char *start = NULL;
+    const char *end = NULL;
+    size_t i;
+
+    /* Find the last '<' and the corresponding '>' */
+    for (i = 0; header[i]; i++) {
+        if (header[i] == '<') start = header + i + 1;
+        else if (header[i] == '>') end = header + i;
+    }
+
+    if (start && end && start < end) {
+        /* Trim whitespace from start */
+        while (start < end && isspace((unsigned char)*start)) start++;
+        /* Trim whitespace from end */
+        while (end > start && isspace((unsigned char)*(end-1))) end--;
+
+        /* Reject if empty */
+        if (end <= start) return NULL;
+
+        /* Reject if any control chars (\r, \n, 0x00-0x1F, 0x7F) */
+        for (const char *p = start; p < end; p++) {
+            if ((unsigned char)*p < 32 || *p == 127) return NULL;
+        }
+
+        *len = (size_t)(end - start);
+        return start;
+    }
+
+    /* No angle brackets: treat the entire header as address */
+    start = header;
+    end = header + strlen(header);
+
+    /* Trim whitespace */
+    while (start < end && isspace((unsigned char)*start)) start++;
+    while (end > start && isspace((unsigned char)*(end-1))) end--;
+
+    if (end <= start) return NULL;
+
+    /* Reject control characters */
+    for (const char *p = start; p < end; p++) {
+        if ((unsigned char)*p < 32 || *p == 127) return NULL;
+    }
+
+    *len = (size_t)(end - start);
+    return start;
 }
 
 void log_event(SMFICTX *ctx, char *msg) {

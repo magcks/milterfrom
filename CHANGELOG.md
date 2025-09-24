@@ -11,3 +11,7 @@ Version 1.0.2  2023-09-18
 * Fixed bug on null sender to SMFIS_ACCEPT and no more filtering
 * Added syslog on null sender event with connection details (IP,name)
 * Changed syslog to be from log_event routine
+
+Version 1.0.3 2025-09-24
+* Added verification of no control characters inside carrots.
+[See references https://blog.slonser.info/posts/email-attacks/ ]
