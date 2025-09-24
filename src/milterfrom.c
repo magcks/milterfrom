@@ -42,6 +42,10 @@
 #include <pwd.h>
 #include <grp.h>
 #include <stdint.h>
+#include <syslog.h>
+
+#include <ctype.h>
+#include <stddef.h>
 
 #include "libmilter/mfapi.h"
 #include "libmilter/mfdef.h"
@@ -54,6 +58,9 @@ struct mlfiPriv {
 };
 
 #define MLFIPRIV ((struct mlfiPriv*)smfi_getpriv(ctx))
+#define VERSION "1.0.3"
+
+extern const char *__progname;
 
 static unsigned long mta_caps = 0;
 
@@ -61,24 +68,62 @@ static unsigned long mta_caps = 0;
 // contains a < with a subsequent >, the inner part is used. If not, the whole
 // header field is used. This allows matching "Max Mustermann
 // <max.mustermann@example.invalid>".
-const char *parse_address(const char *address, size_t *len)
-{
-	size_t inlen = strlen(address);
-	size_t pos_open = SIZE_MAX, pos_close = SIZE_MAX;
-	size_t i;
-	for (i = 0; i < inlen; ++i) {
-		if (address[i] == '<') pos_open = i;
-		else if (address[i] == '>') pos_close = i;
-	}
+const char *parse_address(const char *header, size_t *len) {
+    if (!header || !len) return NULL;
 
-	if (pos_open != SIZE_MAX && pos_close != SIZE_MAX && pos_open < pos_close) {
-		*len = pos_close - pos_open - 1;
-		return address + pos_open + 1;
-	} else {
-		*len = inlen;
-		return address;
-	}
+    const char *start = NULL;
+    const char *end = NULL;
+    size_t i;
+
+    /* Find the last '<' and the corresponding '>' */
+    for (i = 0; header[i]; i++) {
+        if (header[i] == '<') start = header + i + 1;
+        else if (header[i] == '>') end = header + i;
+    }
+
+    if (start && end && start < end) {
+        /* Trim whitespace from start */
+        while (start < end && isspace((unsigned char)*start)) start++;
+        /* Trim whitespace from end */
+        while (end > start && isspace((unsigned char)*(end-1))) end--;
+
+        /* Reject if empty */
+        if (end <= start) return NULL;
+
+        /* Reject if any control chars (\r, \n, 0x00-0x1F, 0x7F) */
+        for (const char *p = start; p < end; p++) {
+            if ((unsigned char)*p < 32 || *p == 127) return NULL;
+        }
+
+        *len = (size_t)(end - start);
+        return start;
+    }
+
+    /* No angle brackets: treat the entire header as address */
+    start = header;
+    end = header + strlen(header);
+
+    /* Trim whitespace */
+    while (start < end && isspace((unsigned char)*start)) start++;
+    while (end > start && isspace((unsigned char)*(end-1))) end--;
+
+    if (end <= start) return NULL;
+
+    /* Reject control characters */
+    for (const char *p = start; p < end; p++) {
+        if ((unsigned char)*p < 32 || *p == 127) return NULL;
+    }
+
+    *len = (size_t)(end - start);
+    return start;
 }
+
+void log_event(SMFICTX *ctx, char *msg) {
+	/* Log event with additional information */
+	const char *author = smfi_getsymval(ctx, "{auth_authen}");
+	const char *info = smfi_getsymval(ctx,"_");
+	syslog(LOG_INFO,"%s for authenticated user (%s) from (%s)", msg, author, info);
+} 
 
 void mlfi_cleanup(SMFICTX *ctx)
 {
@@ -108,7 +153,8 @@ sfsistat mlfi_envfrom(SMFICTX *ctx, char **envfrom)
 	if (len == 0) {
 		/* A 0 length from address means a "null reverse-path", which is valid per
 		 * RFC5321. */
-		return SMFIS_CONTINUE;
+		log_event(ctx, "Accepting message as envelope sender is null");
+		return SMFIS_ACCEPT;
 	}
 	fromcp = strndup(from, len);
 	if (fromcp == NULL) {
@@ -139,7 +185,19 @@ sfsistat mlfi_header(SMFICTX *ctx, char *headerf, char *headerv)
 			const char *from = parse_address(headerv, &len);
 
 			// Check whether header from matches envelope from and reject if not.
-			if (len != priv->env_from_len || strncasecmp(from, priv->env_from, len) != 0) priv->reject = 1;
+			if (len != priv->env_from_len || strncasecmp(from, priv->env_from, len) != 0) {
+				char *msg;
+				size_t msg_len = 0;
+
+				priv->reject = 1;
+				msg_len = 55 + len + priv->env_from_len;
+				msg = malloc(msg_len);
+				if (msg != NULL) { 
+					snprintf(msg, msg_len, "Rejecting Envelope From (%s) and Header From (%s) mismatch", priv->env_from, from);
+					log_event(ctx, msg);
+				}
+				free(msg);
+			}
 		}
 	}
 
@@ -202,13 +260,24 @@ struct smfiDesc smfilter =
 
 uid_t get_uid(const char *name)
 {
-    struct passwd *pwd = getpwnam(name);
-    return pwd == NULL ? -1 : pwd->pw_uid;
+	struct passwd *pwd = getpwnam(name);
+	return pwd == NULL ? -1 : pwd->pw_uid;
 }
 gid_t get_gid(const char *name)
 {
-    struct group *grp = getgrnam(name);
-    return grp == NULL ? -1 : grp->gr_gid;
+	struct group *grp = getgrnam(name);
+	return grp == NULL ? -1 : grp->gr_gid;
+}
+
+static void usage(FILE *stream) {
+	fprintf(stream, "%s: A Milter program version %s to reject emails that have a mismatch between Envelope Sender and email Header From fields for authenticated users. This prevents spoofing that is currently not possible with \"reject_authenticated_sender_login_mismatch\" in Postfix\n", __progname, VERSION);
+	fprintf(stream, "%s: usage: %s -s socketfile [options]\n"
+		"\t-p pidfile  \twrite process ID to pidfile name\n"
+		"\t-d          \tdaemonize to background and exit\n"
+		"\t-u userid   \tchange to specified userid\n"
+		"\t-g groupid  \tchange to specific groupid\n"
+		"\t-v          \tprint version number and terminate\n",
+		__progname, __progname);
 }
 
 int main(int argc, char **argv)
@@ -218,8 +287,11 @@ int main(int argc, char **argv)
 	mode_t um = -1;
 	char *pidfilename = NULL, *sockname = NULL;
 	FILE *pidfile = NULL;
+	u_int mvmajor;
+	u_int mvminor;
+	u_int mvrelease;
 
-	while ((c = getopt(argc, argv, "ds:p:u:g:m:")) != -1) {
+	while ((c = getopt(argc, argv, "dhvs:p:u:g:m:")) != -1) {
 		switch (c) {
 		case 's':
 			sockname = strdup(optarg);
@@ -239,19 +311,29 @@ int main(int argc, char **argv)
 		case 'm':
 			um = strtol(optarg, 0, 8);
 			break;
+		case 'h':
+			usage(stdout);
+			return EXIT_SUCCESS;
+		case 'v':
+			printf("%s: v%s\n", __progname, VERSION);
+			printf("\tSMFI_VERSION 0x%x\n", SMFI_VERSION);
+
+			(void)smfi_version(&mvmajor, &mvminor, &mvrelease);
+			printf("\tlibmilter version %d.%d.%d\n", mvmajor, mvminor, mvrelease);
+			return EXIT_SUCCESS;
 		}
 	}
 
 	if (!sockname) {
 		fprintf(stderr, "%s: Missing required -s argument\n", argv[0]);
-		exit(EX_USAGE);
+		usage(stderr);
+		return EX_USAGE;
 	}
 
 	if (pidfilename) {
 		unlink(pidfilename);
 		pidfile = fopen(pidfilename, "w");
-		if (!pidfile)
-		{
+		if (!pidfile) {
 			fprintf(stderr, "Could not open pidfile: %s\n", strerror(errno));
 			exit(1);
 		}
@@ -282,5 +364,6 @@ int main(int argc, char **argv)
 		fprintf(stderr, "smfi_register failed\n");
 		exit(EX_UNAVAILABLE);
 	}
+        openlog("milterfrom", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_MAIL);
 	return smfi_main();
 }
