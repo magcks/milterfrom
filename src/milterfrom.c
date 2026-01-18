@@ -46,6 +46,8 @@
 #include <ctype.h>
 #include <stddef.h>
 
+// Assume stdbool.h is there. c99 was 27 years ago...
+#define SM_CONF_STDBOOL_H 1
 #include "libmilter/mfapi.h"
 #include "libmilter/mfdef.h"
 
